@@ -5,7 +5,7 @@ name: E2E
 on:
   workflow_dispatch:
   schedule:
-    - cron: "23 6 * * 1"
+    - cron: "23 6 1 * *"   # monthly: 2 requests, so it fits the free Basic plan (15 a month)
 
 permissions:
   contents: read

@@ -116,7 +116,7 @@ shellcheck -x scripts/*.sh tests/bin/curl
 actionlint
 ```
 
-The end-to-end test (`.github/workflows/e2e.yml`) runs the action against the real API weekly, with the
+The end-to-end test (`.github/workflows/e2e.yml`) runs the action against the real API monthly, with the
 `RAPIDAPI_KEY` secret.
 
 ## Licence
