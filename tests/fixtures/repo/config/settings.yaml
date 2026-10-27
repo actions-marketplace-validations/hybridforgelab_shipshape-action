@@ -1,0 +1,2 @@
+log_level: info
+retries: 3

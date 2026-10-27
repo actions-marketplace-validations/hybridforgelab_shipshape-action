@@ -1,0 +1,21 @@
+name: Demo
+
+# The action on a real pull request: open a PR that changes files under demo/ to see the annotations on the diff.
+on:
+  pull_request:
+    paths: ["demo/**"]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  shipshape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./
+        with:
+          rapidapi-key: ${{ secrets.RAPIDAPI_KEY }}
+          dockerfile-paths: "demo/**/Dockerfile,demo/**/*.Dockerfile"
+          kubernetes-paths: "demo/**/*.yaml,demo/**/*.yml"

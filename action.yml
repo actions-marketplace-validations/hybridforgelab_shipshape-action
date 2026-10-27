@@ -1,0 +1,80 @@
+name: Shipshape Dockerfile & Kubernetes lint
+description: Lint the Dockerfiles and Kubernetes manifests a pull request changes, with Pod Security Standards checks, an A–F grade and PR annotations.
+author: Hybrid Forge Lab
+branding:
+  icon: anchor
+  color: blue
+
+inputs:
+  rapidapi-key:
+    description: Your RapidAPI key for the Shipshape API (store it as a secret). The free Basic plan has 15 requests a month.
+    required: true
+  mode:
+    description: "`changed` lints only the files the pull request or push changed; `all` lints every matching file in the repository."
+    default: changed
+  dockerfile-paths:
+    description: Comma-separated globs for Dockerfiles.
+    default: "**/Dockerfile,**/*.Dockerfile,**/Dockerfile.*,**/Containerfile"
+  kubernetes-paths:
+    description: Comma-separated globs for Kubernetes manifests.
+    default: "**/*.yaml,**/*.yml"
+  exclude-paths:
+    description: Comma-separated globs to skip.
+    default: ".github/**,**/templates/**,**/docker-compose*.y*ml,**/compose*.y*ml"
+  fail-on:
+    description: "Fail when a finding is at or above this severity: `high`, `medium`, `low`, `info` or `never`."
+    default: high
+  min-grade:
+    description: Also fail when any file grades worse than this (A–F). Empty to disable.
+    default: ""
+  ignore:
+    description: Comma-separated rule ids to ignore, e.g. `DF-017,K8S-025`.
+    default: ""
+  max-requests:
+    description: Maximum API requests per run (one file = one request). Files over the cap are listed as not analysed.
+    default: "10"
+  on-quota-exceeded:
+    description: "`warn` (default) or `fail` when the monthly quota is exhausted."
+    default: warn
+  github-token:
+    description: Token used to list the files a pull request changed.
+    default: ${{ github.token }}
+
+outputs:
+  passed:
+    description: "`true` when every analysed file passed (and met `min-grade`)."
+    value: ${{ steps.lint.outputs.passed }}
+  worst-grade:
+    description: The worst grade among analysed files (empty when none was analysed).
+    value: ${{ steps.lint.outputs.worst-grade }}
+  lowest-score:
+    description: The lowest score among analysed files.
+    value: ${{ steps.lint.outputs.lowest-score }}
+  findings-total:
+    description: Total number of findings across analysed files.
+    value: ${{ steps.lint.outputs.findings-total }}
+  requests-used:
+    description: API requests used by this run.
+    value: ${{ steps.lint.outputs.requests-used }}
+  quota-remaining:
+    description: Requests left this month, from RapidAPI's response headers (empty if unknown).
+    value: ${{ steps.lint.outputs.quota-remaining }}
+
+runs:
+  using: composite
+  steps:
+    - id: lint
+      shell: bash
+      run: '"$GITHUB_ACTION_PATH/scripts/run.sh"'
+      env:
+        INPUT_RAPIDAPI_KEY: ${{ inputs.rapidapi-key }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_DOCKERFILE_PATHS: ${{ inputs.dockerfile-paths }}
+        INPUT_KUBERNETES_PATHS: ${{ inputs.kubernetes-paths }}
+        INPUT_EXCLUDE_PATHS: ${{ inputs.exclude-paths }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_MIN_GRADE: ${{ inputs.min-grade }}
+        INPUT_IGNORE: ${{ inputs.ignore }}
+        INPUT_MAX_REQUESTS: ${{ inputs.max-requests }}
+        INPUT_ON_QUOTA_EXCEEDED: ${{ inputs.on-quota-exceeded }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Fake curl for the bats tests. Lint calls (POST …/v1/<type>) answer from $MOCK_DIR:
+#   status_<type>  one HTTP status per line, consumed in order (the last one repeats)
+#   body_<status>_<type> or body_<status>  response body
+#   quota          value of x-ratelimit-requests-remaining (optional)
+# GitHub API calls answer with $MOCK_DIR/github.json. Every request body is appended to $MOCK_DIR/requests.log.
+out="" headers="" url="" fmt="" data=""
+while (($#)); do
+  case "$1" in
+    -o) out="$2"; shift ;;
+    -D) headers="$2"; shift ;;
+    -w) fmt="$2"; shift ;;
+    -H|-X|--max-time) shift ;;
+    --data-binary) data="$2"; shift ;;
+    http*) url="$1" ;;
+  esac
+  shift
+done
+if [[ $url == *api.github.com* || $url == "${GITHUB_API_URL:-x}"* ]]; then
+  cat "$MOCK_DIR/github.json"; exit 0
+fi
+[[ $data == @- ]] && cat >> "$MOCK_DIR/requests.log" && echo >> "$MOCK_DIR/requests.log"
+type="${url##*/}"
+seq="$MOCK_DIR/status_$type"
+status="$(head -1 "$seq")"
+if [[ $(wc -l < "$seq") -gt 1 ]]; then tail -n +2 "$seq" > "$seq.tmp" && mv "$seq.tmp" "$seq"; fi
+[[ $status == 000 ]] && { printf '000'; exit 7; }
+body="$MOCK_DIR/body_${status}_$type"; [[ -f $body ]] || body="$MOCK_DIR/body_$status"
+cp "$body" "$out"
+{ echo "HTTP/2 $status"; [[ -f $MOCK_DIR/quota ]] && echo "x-ratelimit-requests-remaining: $(cat "$MOCK_DIR/quota")"; } > "$headers"
+[[ -n $fmt ]] && printf '%s' "$status"
+exit 0

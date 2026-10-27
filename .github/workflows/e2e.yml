@@ -1,0 +1,49 @@
+name: E2E
+
+# Runs this action (uses: ./) against the real Shipshape API through RapidAPI.
+# Needs the repository secret RAPIDAPI_KEY; without it the job is skipped.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.RAPIDAPI_KEY != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: No key
+        if: env.HAS_KEY != 'true'
+        run: echo "::warning::RAPIDAPI_KEY is not set; skipping the end-to-end test."
+      - name: Lint the fixtures with the action
+        if: env.HAS_KEY == 'true'
+        id: lint
+        continue-on-error: true   # the fixture Dockerfile has a high finding on purpose
+        uses: ./
+        with:
+          rapidapi-key: ${{ secrets.RAPIDAPI_KEY }}
+          mode: all
+          dockerfile-paths: tests/fixtures/repo/Dockerfile
+          kubernetes-paths: tests/fixtures/repo/k8s/deployment.yaml
+          exclude-paths: ""
+          max-requests: "2"
+      - name: Check the outputs
+        if: env.HAS_KEY == 'true'
+        env:
+          PASSED: ${{ steps.lint.outputs.passed }}
+          WORST: ${{ steps.lint.outputs.worst-grade }}
+          REQUESTS: ${{ steps.lint.outputs.requests-used }}
+          QUOTA: ${{ steps.lint.outputs.quota-remaining }}
+          OUTCOME: ${{ steps.lint.outcome }}
+        run: |
+          echo "passed=$PASSED worst=$WORST requests=$REQUESTS quota=$QUOTA outcome=$OUTCOME"
+          test "$OUTCOME" = failure    # the high finding must fail the step
+          test "$PASSED" = false
+          test -n "$WORST"
+          test "$REQUESTS" = 2
+          test -n "$QUOTA"             # RapidAPI's quota header came through
